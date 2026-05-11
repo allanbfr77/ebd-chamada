@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>EBD · Chamada</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230f172a'/><text x='50%25' y='56%25' text-anchor='middle' font-size='34' font-family='system-ui' fill='white' font-weight='700'>EBD</text></svg>" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header__row">
+      <div class="brand">
+        <span class="brand__badge">EBD</span>
+        <div class="brand__text">
+          <strong>Chamada</strong>
+          <small id="brandSubtitle">carregando…</small>
+        </div>
+      </div>
+      <label class="month-picker">
+        <span class="sr-only">Mês</span>
+        <input id="monthInput" type="month" />
+      </label>
+    </div>
+
+    <nav id="dateChips" class="date-chips" aria-label="Domingos do mês"></nav>
+
+    <div id="counters" class="counters" role="status" aria-live="polite">
+      <span class="chip chip--P">P <b id="cP">0</b></span>
+      <span class="chip chip--A">A <b id="cA">0</b></span>
+      <span class="chip chip--J">J <b id="cJ">0</b></span>
+      <span class="chip chip--F">F <b id="cF">0</b></span>
+      <span class="chip chip--FH">FH <b id="cFH">0</b></span>
+      <span class="chip chip--total">Total <b id="cTotal">0</b></span>
+    </div>
+  </header>
+
+  <main id="main" class="main">
+    <ul id="studentList" class="student-list" aria-busy="true"></ul>
+    <p id="emptyState" class="empty-state" hidden>
+      Nenhum aluno cadastrado ainda. Toque em <b>+ Aluno</b> para começar.
+    </p>
+  </main>
+
+  <nav class="action-bar" aria-label="Ações">
+    <button id="btnSave" class="action action--primary" type="button">
+      <span class="action__icon" aria-hidden="true">💾</span>
+      <span>Salvar</span>
+    </button>
+    <button id="btnHistory" class="action" type="button">
+      <span class="action__icon" aria-hidden="true">📅</span>
+      <span>Histórico</span>
+    </button>
+    <button id="btnAdd" class="action" type="button">
+      <span class="action__icon" aria-hidden="true">➕</span>
+      <span>Aluno</span>
+    </button>
+    <button id="btnExport" class="action" type="button">
+      <span class="action__icon" aria-hidden="true">🖼️</span>
+      <span>PNG</span>
+    </button>
+  </nav>
+
+  <!-- Modal: Histórico do mês -->
+  <dialog id="historyModal" class="modal">
+    <form method="dialog" class="modal__inner">
+      <header class="modal__header">
+        <h2 id="historyTitle">Histórico do mês</h2>
+        <button class="icon-btn" value="close" aria-label="Fechar">✕</button>
+      </header>
+      <div class="modal__body modal__body--scroll">
+        <div id="historyTableWrap" class="history-wrap"></div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal: Adicionar aluno -->
+  <dialog id="addModal" class="modal">
+    <form id="addForm" class="modal__inner">
+      <header class="modal__header">
+        <h2>Adicionar aluno</h2>
+        <button class="icon-btn" type="button" data-close aria-label="Fechar">✕</button>
+      </header>
+      <div class="modal__body">
+        <label class="field">
+          <span>Nome do aluno</span>
+          <input id="newName" type="text" required maxlength="80" autocomplete="off" />
+        </label>
+      </div>
+      <footer class="modal__footer">
+        <button type="button" class="btn btn--ghost" data-close>Cancelar</button>
+        <button type="submit" class="btn btn--primary">Adicionar</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" role="alert" aria-live="assertive" hidden></div>
+
+  <!-- Loading overlay -->
+  <div id="loading" class="loading" hidden>
+    <div class="loading__spinner" aria-hidden="true"></div>
+    <p id="loadingText">Carregando…</p>
+  </div>
+
+  <!-- Snapshot oculto usado para exportar PNG -->
+  <div id="exportSurface" class="export-surface" aria-hidden="true"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+  <script src="config.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
