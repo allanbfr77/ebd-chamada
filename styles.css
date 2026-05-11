@@ -187,7 +187,7 @@ body {
 }
 .status-btn {
   appearance: none;
-  border: 1.5px solid var(--border-strong);
+  border: 2px solid var(--border-strong);
   background: #fff;
   color: var(--text);
   font-weight: 800;
@@ -199,12 +199,19 @@ body {
   min-height: 44px; /* alvo de toque */
   touch-action: manipulation;
 }
+/* Borda na cor do status (facilita acerto no toque; não depende de hover). */
+.status-btn[data-status="P"]  { border-color: var(--p-solid); }
+.status-btn[data-status="A"]  { border-color: var(--a-solid); }
+.status-btn[data-status="J"]  { border-color: var(--j-solid); }
+.status-btn[data-status="F"]  { border-color: var(--f-solid); }
+.status-btn[data-status="FH"] { border-color: var(--fh-solid); }
+
 .status-btn:active { transform: scale(.96); }
-.status-btn[data-status="P"]:hover  { border-color: var(--p-bd);  background: var(--p-bg); }
-.status-btn[data-status="A"]:hover  { border-color: var(--a-bd);  background: var(--a-bg); }
-.status-btn[data-status="J"]:hover  { border-color: var(--j-bd);  background: var(--j-bg); }
-.status-btn[data-status="F"]:hover  { border-color: var(--f-bd);  background: var(--f-bg); }
-.status-btn[data-status="FH"]:hover { border-color: var(--fh-bd); background: var(--fh-bg); }
+.status-btn[data-status="P"]:hover  { background: var(--p-bg); }
+.status-btn[data-status="A"]:hover  { background: var(--a-bg); }
+.status-btn[data-status="J"]:hover  { background: var(--j-bg); }
+.status-btn[data-status="F"]:hover  { background: var(--f-bg); }
+.status-btn[data-status="FH"]:hover { background: var(--fh-bg); }
 
 .status-btn.is-active[data-status="P"]  { background: var(--p-solid);  border-color: var(--p-solid);  color: #fff; }
 .status-btn.is-active[data-status="A"]  { background: var(--a-solid);  border-color: var(--a-solid);  color: #fff; }
