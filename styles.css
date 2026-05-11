@@ -257,7 +257,19 @@ body {
   min-height: 52px;
   touch-action: manipulation;
 }
-.action__icon { font-size: 20px; line-height: 1; }
+.action__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.action__icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
 .action:active { transform: scale(.97); }
 .action--primary {
   background: var(--primary);
