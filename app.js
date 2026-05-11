@@ -121,9 +121,13 @@
     return url;
   }
 
+  const API_TIMEOUT_MS = 90000;
+
   async function api(action, params) {
     const url = getApiUrl();
     const payload = Object.assign({ action }, params || {});
+    const controller = new AbortController();
+    const timeoutId = setTimeout(function () { controller.abort(); }, API_TIMEOUT_MS);
     let res;
     try {
       res = await fetch(url, {
@@ -131,10 +135,16 @@
         // text/plain evita preflight (CORS "simple request")
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
-        redirect: 'follow'
+        redirect: 'follow',
+        signal: controller.signal
       });
     } catch (err) {
+      if (err && err.name === 'AbortError') {
+        throw new Error('O servidor demorou demais para responder. Tente de novo.');
+      }
       throw new Error('Falha de rede. Verifique a conexão.');
+    } finally {
+      clearTimeout(timeoutId);
     }
     if (!res.ok) {
       throw new Error(`Servidor retornou HTTP ${res.status}`);

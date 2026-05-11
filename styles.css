@@ -382,6 +382,12 @@ body {
   z-index: 100;
   backdrop-filter: blur(2px);
 }
+/* O atributo hidden sozinho perde para display:grid em vários navegadores/WebViews. */
+.loading[hidden] {
+  display: none !important;
+  pointer-events: none;
+  visibility: hidden;
+}
 .loading__spinner {
   width: 36px; height: 36px;
   border-radius: 50%;
