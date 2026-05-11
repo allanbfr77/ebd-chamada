@@ -671,7 +671,7 @@
     summary.style.fontSize = '12px';
     summary.style.color = '#475569';
     summary.textContent =
-      `Total de alunos: ${state.students.length} · ` +
+      `Total de obreiros: ${state.students.length} · ` +
       `Domingos no mês: ${dates.length}`;
 
     card.appendChild(table);
