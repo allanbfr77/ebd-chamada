@@ -16,6 +16,7 @@
     'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
     'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'
   ];
+  const MONTH_CACHE_KEY = 'ebd-chamada-month-v1';
 
   /** Estado global da aplicação. */
   const state = {
@@ -168,6 +169,34 @@
     el.loading.hidden = false;
   }
   function hideLoading() { el.loading.hidden = true; }
+
+  function readMonthCache(month) {
+    try {
+      const raw = localStorage.getItem(MONTH_CACHE_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || obj.month !== month || !obj.savedAt) return null;
+      if (Date.now() - obj.savedAt > 7 * 24 * 60 * 60 * 1000) return null;
+      return obj;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function writeMonthCache(month, payload) {
+    try {
+      localStorage.setItem(
+        MONTH_CACHE_KEY,
+        JSON.stringify({
+          month,
+          savedAt: Date.now(),
+          students: payload.students,
+          grid: payload.grid,
+          dates: payload.dates
+        })
+      );
+    } catch (_) { /* quota / modo privado */ }
+  }
 
   function setBrandSubtitle(text) {
     el.brandSubtitle.textContent = text;
@@ -387,13 +416,33 @@
     el.monthInput.value = month;
     setBrandSubtitle(formatMonthLong(month));
 
-    showLoading('Carregando chamada…');
+    const cached = !opts.skipCache ? readMonthCache(month) : null;
+    let showedCache = false;
+    if (cached && Array.isArray(cached.students)) {
+      state.students = cached.students;
+      state.grid = cached.grid && typeof cached.grid === 'object' ? cached.grid : {};
+      state.savedDates = new Set(Array.isArray(cached.dates) ? cached.dates : []);
+      state.students.forEach((n) => { if (!state.grid[n]) state.grid[n] = {}; });
+      const preferred = opts.preserveDate && state.sundays.includes(state.date)
+        ? state.date
+        : pickClosestSunday(state.sundays);
+      state.date = preferred || '';
+      state.dirty = false;
+      renderDateChips();
+      renderStudentList();
+      renderCounters();
+      hideLoading();
+      showedCache = true;
+      setBrandSubtitle(`${formatMonthLong(month)} · sincronizando…`);
+    } else {
+      showLoading('Carregando chamada…');
+    }
+
     try {
       const data = await api('getMonth', { month });
       state.students = data.students || [];
       state.grid = data.grid || {};
       state.savedDates = new Set(data.dates || []);
-      // Garante entrada na grid mesmo se aluno ainda não tem dados
       state.students.forEach((n) => { if (!state.grid[n]) state.grid[n] = {}; });
 
       const preferred = opts.preserveDate && state.sundays.includes(state.date)
@@ -402,12 +451,23 @@
       state.date = preferred || '';
       state.dirty = false;
 
+      writeMonthCache(month, {
+        students: state.students,
+        grid: state.grid,
+        dates: [...state.savedDates]
+      });
+
       renderDateChips();
       renderStudentList();
       renderCounters();
     } catch (err) {
-      toast(err.message, 'error');
-      setBrandSubtitle('Falha ao carregar');
+      if (!showedCache) {
+        toast(err.message, 'error');
+        setBrandSubtitle('Falha ao carregar');
+      } else {
+        toast('Sem conexão; exibindo dados em cache.', 'error');
+        renderCounters();
+      }
     } finally {
       hideLoading();
     }
@@ -431,6 +491,11 @@
       });
       state.dirty = false;
       state.savedDates.add(state.date);
+      writeMonthCache(state.month, {
+        students: state.students,
+        grid: state.grid,
+        dates: [...state.savedDates]
+      });
       renderDateChips();
       toast('Chamada salva.', 'success');
     } catch (err) {
@@ -447,7 +512,7 @@
     try {
       await api('addStudent', { name: clean });
       toast(`${clean} adicionado.`, 'success');
-      await loadMonth(state.month, { preserveDate: true });
+      await loadMonth(state.month, { preserveDate: true, skipCache: true });
       return true;
     } catch (err) {
       toast('Erro: ' + err.message, 'error');

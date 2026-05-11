@@ -92,8 +92,9 @@ function ss_() {
   return SpreadsheetApp.openById(SHEET_ID);
 }
 
-function getStudents_() {
-  const sheet = ss_().getSheetByName(STUDENTS_TAB);
+/** Lista de alunos a partir de uma instância já aberta (evita openById extra). */
+function getStudentsFromSpreadsheet_(ss) {
+  const sheet = ss.getSheetByName(STUDENTS_TAB);
   if (!sheet) throw new Error('Aba "' + STUDENTS_TAB + '" não encontrada.');
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
@@ -103,11 +104,14 @@ function getStudents_() {
     .filter(function (n) { return n.length > 0; });
 }
 
-function ensureMonthSheet_(month) {
+function getStudents_() {
+  return getStudentsFromSpreadsheet_(ss_());
+}
+
+function ensureMonthSheetForSpreadsheet_(ss, month) {
   if (!/^\d{4}-\d{2}$/.test(month)) {
     throw new Error('Mês inválido. Use o formato AAAA-MM, ex: 2026-05.');
   }
-  const ss = ss_();
   let sheet = ss.getSheetByName(month);
   if (!sheet) {
     sheet = ss.insertSheet(month);
@@ -118,12 +122,17 @@ function ensureMonthSheet_(month) {
   return sheet;
 }
 
+function ensureMonthSheet_(month) {
+  return ensureMonthSheetForSpreadsheet_(ss_(), month);
+}
+
 /**
  * Garante que todos os alunos da aba "Alunos" existem na aba do mês,
  * sem remover quem já está lá. Mantém a ordem da aba "Alunos" para novos.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {string[]} students lista já lida da aba Alunos (reuso em getMonth_)
  */
-function syncStudentsToMonth_(sheet) {
-  const students = getStudents_();
+function syncStudentsToMonthWithList_(sheet, students) {
   const lastRow = sheet.getLastRow();
   let existing = [];
   if (lastRow >= 2) {
@@ -142,6 +151,10 @@ function syncStudentsToMonth_(sheet) {
   }
 }
 
+function syncStudentsToMonth_(sheet) {
+  syncStudentsToMonthWithList_(sheet, getStudents_());
+}
+
 function headerToDateStr_(value) {
   if (value instanceof Date) {
     return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
@@ -150,8 +163,10 @@ function headerToDateStr_(value) {
 }
 
 function getMonth_(month) {
-  const sheet = ensureMonthSheet_(month);
-  syncStudentsToMonth_(sheet);
+  const ss = ss_();
+  const sheet = ensureMonthSheetForSpreadsheet_(ss, month);
+  const studentsList = getStudentsFromSpreadsheet_(ss);
+  syncStudentsToMonthWithList_(sheet, studentsList);
 
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
