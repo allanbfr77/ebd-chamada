@@ -26,7 +26,9 @@
     students: [],       // ['Nome', ...]
     grid: {},           // { 'Nome': { 'YYYY-MM-DD': 'P'|'A'|... } }
     savedDates: new Set(), // datas que já existem na planilha
-    dirty: false
+    dirty: false,
+    expandedRows: new Set(), // linhas abertas manualmente (data atual)
+    expandAll: false         // "Mostrar todos" na data atual
   };
 
   /** Atalhos de DOM. */
@@ -36,6 +38,8 @@
     brandSubtitle: $('#brandSubtitle'),
     dateChips: $('#dateChips'),
     studentList: $('#studentList'),
+    listToolbar: $('#listToolbar'),
+    btnExpandAll: $('#btnExpandAll'),
     emptyState: $('#emptyState'),
     counters: { P: $('#cP'), A: $('#cA'), J: $('#cJ'), F: $('#cF'), FH: $('#cFH'), total: $('#cTotal') },
     btnSave: $('#btnSave'),
@@ -212,6 +216,64 @@
     el.brandSubtitle.textContent = text;
   }
 
+  function getStatusForDate(name) {
+    return (state.grid[name] && state.grid[name][state.date]) || '';
+  }
+
+  function resetCollapseState() {
+    state.expandedRows.clear();
+    state.expandAll = false;
+    updateListToolbar();
+  }
+
+  function isRowCollapsed(name) {
+    return !!getStatusForDate(name) && !state.expandAll && !state.expandedRows.has(name);
+  }
+
+  function updateListToolbar() {
+    if (!el.listToolbar) return;
+    const collapsed = state.students.filter((n) => isRowCollapsed(n)).length;
+    el.listToolbar.hidden = collapsed === 0;
+  }
+
+  function applyRowCollapseState(row, name) {
+    if (!row) return;
+    const collapsed = isRowCollapsed(name);
+    row.classList.toggle('student--collapsed', collapsed);
+    const group = row.querySelector('.status-group');
+    if (group) group.hidden = collapsed;
+    const header = row.querySelector('.student__name');
+    if (header) {
+      header.setAttribute('aria-expanded', String(!collapsed));
+      if (collapsed) header.setAttribute('title', 'Toque para editar');
+      else header.removeAttribute('title');
+    }
+  }
+
+  function sortStudentsForDisplay() {
+    return [...state.students].sort((a, b) => {
+      const filledA = getStatusForDate(a) ? 1 : 0;
+      const filledB = getStatusForDate(b) ? 1 : 0;
+      if (filledA !== filledB) return filledA - filledB;
+      return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' });
+    });
+  }
+
+  function expandRow(name) {
+    state.expandedRows.add(name);
+    const row = el.studentList.querySelector(`li[data-name="${cssEscape(name)}"]`);
+    applyRowCollapseState(row, name);
+    updateListToolbar();
+  }
+
+  function expandAllRows() {
+    state.expandAll = true;
+    el.studentList.querySelectorAll('.student').forEach((row) => {
+      applyRowCollapseState(row, row.dataset.name);
+    });
+    updateListToolbar();
+  }
+
   /* ========================================================
    *  Render
    * ======================================================== */
@@ -231,6 +293,7 @@
         if (state.dirty && !confirm('Você tem alterações não salvas. Trocar de data mesmo assim?')) return;
         state.date = iso;
         state.dirty = false;
+        resetCollapseState();
         renderDateChips();
         renderStudentList();
         renderCounters();
@@ -244,13 +307,14 @@
     if (state.students.length === 0) {
       el.emptyState.hidden = false;
       el.studentList.setAttribute('aria-busy', 'false');
+      if (el.listToolbar) el.listToolbar.hidden = true;
       return;
     }
     el.emptyState.hidden = true;
 
     const frag = document.createDocumentFragment();
-    state.students.forEach((name) => {
-      const current = (state.grid[name] && state.grid[name][state.date]) || '';
+    sortStudentsForDisplay().forEach((name) => {
+      const current = getStatusForDate(name);
       const li = document.createElement('li');
       li.className = 'student';
       li.dataset.name = name;
@@ -265,6 +329,9 @@
       badge.textContent = current || '—';
       header.appendChild(nameSpan);
       header.appendChild(badge);
+      header.addEventListener('click', () => {
+        if (isRowCollapsed(name)) expandRow(name);
+      });
 
       const group = document.createElement('div');
       group.className = 'status-group';
@@ -285,11 +352,13 @@
 
       li.appendChild(header);
       li.appendChild(group);
+      applyRowCollapseState(li, name);
       frag.appendChild(li);
     });
 
     el.studentList.appendChild(frag);
     el.studentList.setAttribute('aria-busy', 'false');
+    updateListToolbar();
   }
 
   function setStatus(name, status) {
@@ -316,7 +385,12 @@
         badge.dataset.status = next;
         badge.textContent = next || '—';
       }
+      if (next) state.expandedRows.delete(name);
+      applyRowCollapseState(row, name);
+      if (next && !prev) el.studentList.appendChild(row);
+      if (!next && prev) el.studentList.insertBefore(row, el.studentList.firstElementChild);
     }
+    updateListToolbar();
     renderCounters();
   }
 
@@ -438,6 +512,7 @@
         : pickClosestSunday(state.sundays);
       state.date = preferred || '';
       state.dirty = false;
+      if (!opts.preserveDate) resetCollapseState();
       renderDateChips();
       renderStudentList();
       renderCounters();
@@ -460,6 +535,7 @@
         : pickClosestSunday(state.sundays);
       state.date = preferred || '';
       state.dirty = false;
+      if (!opts.preserveDate) resetCollapseState();
 
       writeMonthCache(month, {
         students: state.students,
@@ -703,8 +779,13 @@
         el.monthInput.value = state.month;
         return;
       }
+      resetCollapseState();
       loadMonth(val);
     });
+
+    if (el.btnExpandAll) {
+      el.btnExpandAll.addEventListener('click', expandAllRows);
+    }
 
     el.btnSave.addEventListener('click', saveCurrent);
 

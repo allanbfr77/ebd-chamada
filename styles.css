@@ -148,6 +148,27 @@ body {
 
 /* ===== Lista de alunos =================================== */
 .main { padding: 14px; }
+.list-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+.list-toolbar__btn {
+  appearance: none;
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  touch-action: manipulation;
+}
+.list-toolbar__btn:active { transform: scale(.97); }
+
 .student-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .student {
   background: var(--bg-card);
@@ -160,12 +181,21 @@ body {
   font-weight: 600;
   font-size: 15px;
   margin: 0 0 10px;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
 }
-.student__name span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.student__name > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .student__badge {
-  flex: 0 0 auto;
+  justify-self: end;
+  min-width: 32px;
+  text-align: center;
   font-size: 11px; font-weight: 800;
   padding: 3px 8px;
   border-radius: 999px;
@@ -179,6 +209,36 @@ body {
 .student__badge[data-status="F"]  { background: var(--f-solid);  color: #fff; border-color: transparent; }
 .student__badge[data-status="FH"] { background: var(--fh-solid); color: #fff; border-color: transparent; }
 .student__badge[data-status=""]   { opacity: .55; }
+
+.student--collapsed {
+  padding: 8px 12px;
+  opacity: .92;
+}
+.student--collapsed .student__name {
+  margin-bottom: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  grid-template-columns: minmax(0, 1fr) 32px 12px;
+  column-gap: 10px;
+}
+.student--collapsed .student__badge {
+  grid-column: 2;
+  justify-self: center;
+}
+.student--collapsed .student__name::after {
+  content: '';
+  grid-column: 3;
+  justify-self: end;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--text-dim);
+  border-bottom: 2px solid var(--text-dim);
+  transform: rotate(-45deg);
+  opacity: .55;
+}
+.student--collapsed .status-group {
+  display: none;
+}
 
 .status-group {
   display: grid;
