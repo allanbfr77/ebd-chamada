@@ -55,6 +55,9 @@ function handleRequest_(e) {
       case 'addStudent':
         data = addStudent_(String(params.name || ''));
         break;
+      case 'sortStudents':
+        data = sortAllStudentLists_();
+        break;
       default:
         return jsonOut_({ ok: false, error: 'Ação desconhecida: ' + action });
     }
@@ -92,6 +95,10 @@ function ss_() {
   return SpreadsheetApp.openById(SHEET_ID);
 }
 
+function compareNames_(a, b) {
+  return String(a).localeCompare(String(b), 'pt-BR', { sensitivity: 'base' });
+}
+
 /** Lista de alunos a partir de uma instância já aberta (evita openById extra). */
 function getStudentsFromSpreadsheet_(ss) {
   const sheet = ss.getSheetByName(STUDENTS_TAB);
@@ -101,11 +108,77 @@ function getStudentsFromSpreadsheet_(ss) {
   const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
   return values
     .map(function (r) { return String(r[0] || '').trim(); })
-    .filter(function (n) { return n.length > 0; });
+    .filter(function (n) { return n.length > 0; })
+    .sort(compareNames_);
 }
 
 function getStudents_() {
   return getStudentsFromSpreadsheet_(ss_());
+}
+
+/**
+ * Reescreve a aba Alunos em ordem alfabética (pt-BR).
+ * @return {string[]} lista ordenada
+ */
+function sortStudentsSheet_(ss) {
+  const sheet = ss.getSheetByName(STUDENTS_TAB);
+  if (!sheet) throw new Error('Aba "' + STUDENTS_TAB + '" não encontrada.');
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  const names = values
+    .map(function (r) { return String(r[0] || '').trim(); })
+    .filter(function (n) { return n.length > 0; })
+    .sort(compareNames_);
+
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, 1).clearContent();
+  }
+  if (names.length > 0) {
+    sheet.getRange(2, 1, names.length, 1).setValues(names.map(function (n) { return [n]; }));
+  }
+  return names;
+}
+
+/**
+ * Reordena as linhas da aba do mês pela coluna Aluno, preservando as colunas de data.
+ */
+function sortMonthSheet_(sheet) {
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow < 2) return 0;
+
+  const width = Math.max(lastCol, 1);
+  const body = sheet.getRange(2, 1, lastRow - 1, width).getValues();
+  const rows = body.filter(function (row) {
+    return String(row[0] || '').trim().length > 0;
+  });
+  rows.sort(function (a, b) {
+    return compareNames_(String(a[0] || '').trim(), String(b[0] || '').trim());
+  });
+
+  sheet.getRange(2, 1, lastRow - 1, width).clearContent();
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, width).setValues(rows);
+  }
+  return rows.length;
+}
+
+/** Ordena aba Alunos e todas as abas de mês (AAAA-MM). */
+function sortAllStudentLists_() {
+  const ss = ss_();
+  const students = sortStudentsSheet_(ss);
+  const sheets = ss.getSheets();
+  let monthsSorted = 0;
+  sheets.forEach(function (sheet) {
+    const name = sheet.getName();
+    if (/^\d{4}-\d{2}$/.test(name)) {
+      sortMonthSheet_(sheet);
+      monthsSorted++;
+    }
+  });
+  return { students: students, monthsSorted: monthsSorted };
 }
 
 function ensureMonthSheetForSpreadsheet_(ss, month) {
@@ -128,7 +201,7 @@ function ensureMonthSheet_(month) {
 
 /**
  * Garante que todos os alunos da aba "Alunos" existem na aba do mês,
- * sem remover quem já está lá. Mantém a ordem da aba "Alunos" para novos.
+ * sem remover quem já está lá.
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
  * @param {string[]} students lista já lida da aba Alunos (reuso em getMonth_)
  */
@@ -167,6 +240,7 @@ function getMonth_(month) {
   const sheet = ensureMonthSheetForSpreadsheet_(ss, month);
   const studentsList = getStudentsFromSpreadsheet_(ss);
   syncStudentsToMonthWithList_(sheet, studentsList);
+  sortMonthSheet_(sheet);
 
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
@@ -272,19 +346,33 @@ function addStudent_(name) {
   if (!clean) throw new Error('Nome vazio.');
   if (clean.length > 80) throw new Error('Nome muito longo.');
 
-  const sheet = ss_().getSheetByName(STUDENTS_TAB);
+  const ss = ss_();
+  const sheet = ss.getSheetByName(STUDENTS_TAB);
   if (!sheet) throw new Error('Aba "' + STUDENTS_TAB + '" não encontrada.');
 
   const lastRow = sheet.getLastRow();
   let existing = [];
   if (lastRow >= 2) {
     existing = sheet.getRange(2, 1, lastRow - 1, 1).getValues()
-      .map(function (r) { return String(r[0] || '').trim().toLowerCase(); });
-  }
-  if (existing.indexOf(clean.toLowerCase()) !== -1) {
-    throw new Error('Já existe um aluno com esse nome.');
+      .map(function (r) { return String(r[0] || '').trim(); })
+      .filter(function (n) { return n.length > 0; });
   }
 
-  sheet.getRange(lastRow + 1, 1).setValue(clean);
-  return { added: clean, row: lastRow + 1 };
+  const lower = clean.toLowerCase();
+  for (let i = 0; i < existing.length; i++) {
+    if (existing[i].toLowerCase() === lower) {
+      throw new Error('Já existe um aluno com esse nome.');
+    }
+  }
+
+  existing.push(clean);
+  existing.sort(compareNames_);
+  const row = existing.indexOf(clean) + 2; // +1 header, +1 1-based
+
+  if (lastRow >= 2) {
+    sheet.getRange(2, 1, lastRow - 1, 1).clearContent();
+  }
+  sheet.getRange(2, 1, existing.length, 1).setValues(existing.map(function (n) { return [n]; }));
+
+  return { added: clean, row: row };
 }

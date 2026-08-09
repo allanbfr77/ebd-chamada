@@ -18,6 +18,9 @@
   ];
   const MONTH_CACHE_KEY = 'ebd-chamada-month-v1';
 
+  /** Incrementado a cada loadMonth; respostas antigas são ignoradas. */
+  let loadMonthSeq = 0;
+
   /** Estado global da aplicação. */
   const state = {
     month: '',          // 'YYYY-MM'
@@ -250,12 +253,20 @@
     }
   }
 
+  function compareNames(a, b) {
+    return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' });
+  }
+
+  function sortStudentsAlphabetically(list) {
+    return [...list].sort(compareNames);
+  }
+
   function sortStudentsForDisplay() {
     return [...state.students].sort((a, b) => {
       const filledA = getStatusForDate(a) ? 1 : 0;
       const filledB = getStatusForDate(b) ? 1 : 0;
       if (filledA !== filledB) return filledA - filledB;
-      return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' });
+      return compareNames(a, b);
     });
   }
 
@@ -493,8 +504,37 @@
    *  Ações
    * ======================================================== */
 
+  /** Snapshot de edições locais (por data) para não perder marcações durante o sync. */
+  function snapshotPendingEdits() {
+    if (!state.dirty || !state.date) return null;
+    const date = state.date;
+    const byName = {};
+    state.students.forEach((name) => {
+      if (state.grid[name] && Object.prototype.hasOwnProperty.call(state.grid[name], date)) {
+        byName[name] = state.grid[name][date];
+      }
+    });
+    return { date: date, byName: byName };
+  }
+
+  function applyPendingEdits(pending) {
+    if (!pending || !pending.date) return false;
+    Object.keys(pending.byName).forEach((name) => {
+      if (!state.grid[name]) state.grid[name] = {};
+      state.grid[name][pending.date] = pending.byName[name];
+    });
+    return true;
+  }
+
+  function preferDate(opts) {
+    if (opts.preserveDate && state.sundays.includes(state.date)) return state.date;
+    if (state.sundays.includes(state.date)) return state.date;
+    return pickClosestSunday(state.sundays) || '';
+  }
+
   async function loadMonth(month, opts) {
     opts = opts || {};
+    const seq = ++loadMonthSeq;
     state.month = month;
     state.sundays = getSundaysOfMonth(month);
     el.monthInput.value = month;
@@ -503,14 +543,13 @@
     const cached = !opts.skipCache ? readMonthCache(month) : null;
     let showedCache = false;
     if (cached && Array.isArray(cached.students)) {
+      if (seq !== loadMonthSeq) return;
       state.students = cached.students;
       state.grid = cached.grid && typeof cached.grid === 'object' ? cached.grid : {};
       state.savedDates = new Set(Array.isArray(cached.dates) ? cached.dates : []);
       state.students.forEach((n) => { if (!state.grid[n]) state.grid[n] = {}; });
-      const preferred = opts.preserveDate && state.sundays.includes(state.date)
-        ? state.date
-        : pickClosestSunday(state.sundays);
-      state.date = preferred || '';
+      state.students = sortStudentsAlphabetically(state.students);
+      state.date = preferDate(opts);
       state.dirty = false;
       if (!opts.preserveDate) resetCollapseState();
       renderDateChips();
@@ -525,28 +564,46 @@
 
     try {
       const data = await api('getMonth', { month });
-      state.students = data.students || [];
-      state.grid = data.grid || {};
-      state.savedDates = new Set(data.dates || []);
-      state.students.forEach((n) => { if (!state.grid[n]) state.grid[n] = {}; });
+      if (seq !== loadMonthSeq) return;
 
-      const preferred = opts.preserveDate && state.sundays.includes(state.date)
-        ? state.date
-        : pickClosestSunday(state.sundays);
-      state.date = preferred || '';
-      state.dirty = false;
-      if (!opts.preserveDate) resetCollapseState();
+      // Se o usuário marcou presença enquanto a planilha sincronizava,
+      // a resposta do servidor não pode apagar essas edições locais.
+      const pending = snapshotPendingEdits();
+
+      const serverStudents = data.students || [];
+      const serverGrid = data.grid || {};
+      const serverDates = data.dates || [];
+
+      state.students = serverStudents;
+      state.grid = serverGrid;
+      state.savedDates = new Set(serverDates);
+      state.students.forEach((n) => { if (!state.grid[n]) state.grid[n] = {}; });
+      state.students = sortStudentsAlphabetically(state.students);
+
+      if (pending && state.sundays.includes(pending.date)) {
+        state.date = pending.date;
+      } else {
+        state.date = preferDate(opts);
+      }
 
       writeMonthCache(month, {
-        students: state.students,
-        grid: state.grid,
-        dates: [...state.savedDates]
+        students: serverStudents,
+        grid: serverGrid,
+        dates: serverDates
       });
+
+      if (applyPendingEdits(pending)) {
+        state.dirty = true;
+      } else {
+        state.dirty = false;
+        if (!opts.preserveDate) resetCollapseState();
+      }
 
       renderDateChips();
       renderStudentList();
       renderCounters();
     } catch (err) {
+      if (seq !== loadMonthSeq) return;
       if (!showedCache) {
         toast(err.message, 'error');
         setBrandSubtitle('Falha ao carregar');
@@ -555,7 +612,7 @@
         renderCounters();
       }
     } finally {
-      hideLoading();
+      if (seq === loadMonthSeq) hideLoading();
     }
   }
 
