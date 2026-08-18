@@ -13,29 +13,31 @@
 </head>
 <body>
   <header class="app-header">
-    <div class="app-header__row">
-      <div class="brand">
-        <span class="brand__badge">EBD</span>
-        <div class="brand__text">
-          <strong>Chamada</strong>
-          <small id="brandSubtitle">carregando…</small>
+    <div class="app-header__inner">
+      <div class="app-header__row">
+        <div class="brand">
+          <span class="brand__badge">EBD</span>
+          <div class="brand__text">
+            <strong>Chamada</strong>
+            <small id="brandSubtitle">carregando…</small>
+          </div>
         </div>
+        <label class="month-picker">
+          <span class="sr-only">Mês</span>
+          <input id="monthInput" type="month" />
+        </label>
       </div>
-      <label class="month-picker">
-        <span class="sr-only">Mês</span>
-        <input id="monthInput" type="month" />
-      </label>
-    </div>
 
-    <nav id="dateChips" class="date-chips" aria-label="Domingos do mês"></nav>
+      <nav id="dateChips" class="date-chips" aria-label="Domingos do mês"></nav>
 
-    <div id="counters" class="counters" role="status" aria-live="polite">
-      <span class="chip chip--P">P <b id="cP">0</b></span>
-      <span class="chip chip--A">A <b id="cA">0</b></span>
-      <span class="chip chip--J">J <b id="cJ">0</b></span>
-      <span class="chip chip--F">F <b id="cF">0</b></span>
-      <span class="chip chip--FH">FH <b id="cFH">0</b></span>
-      <span class="chip chip--total">Total <b id="cTotal">0</b></span>
+      <div id="counters" class="counters" role="status" aria-live="polite">
+        <span class="chip chip--P">P <b id="cP">0</b></span>
+        <span class="chip chip--A">A <b id="cA">0</b></span>
+        <span class="chip chip--J">J <b id="cJ">0</b></span>
+        <span class="chip chip--F">F <b id="cF">0</b></span>
+        <span class="chip chip--FH">FH <b id="cFH">0</b></span>
+        <span class="chip chip--total">Total <b id="cTotal">0</b></span>
+      </div>
     </div>
   </header>
 
@@ -118,8 +120,10 @@
 
   <!-- Loading overlay -->
   <div id="loading" class="loading" hidden>
-    <div class="loading__spinner" aria-hidden="true"></div>
-    <p id="loadingText">Carregando…</p>
+    <div class="loading__panel">
+      <div class="loading__spinner" aria-hidden="true"></div>
+      <p id="loadingText">Carregando…</p>
+    </div>
   </div>
 
   <!-- Snapshot oculto usado para exportar PNG -->

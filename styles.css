@@ -29,6 +29,8 @@
 
   --header-h: 168px;
   --action-h: 72px;
+  --content-max: 680px;
+  --page-pad-x: 16px;
 }
 
 * { box-sizing: border-box; }
@@ -60,9 +62,14 @@ body {
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
   color: var(--text);
-  padding: 16px 20px 0;
-  padding-top: calc(16px + env(safe-area-inset-top));
+  padding: calc(16px + env(safe-area-inset-top)) 0 0;
   border-bottom: 1px solid var(--border);
+}
+.app-header__inner {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 var(--page-pad-x);
 }
 .app-header__row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -195,7 +202,12 @@ body {
 .chip--total::before { display: none; }
 
 /* ===== Lista de alunos =================================== */
-.main { padding: 18px 16px; }
+.main {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 18px var(--page-pad-x);
+}
 .list-toolbar {
   display: flex;
   justify-content: flex-end;
@@ -254,6 +266,7 @@ body {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
+  text-align: left;
 }
 .student__name > span:first-child {
   min-width: 0;
@@ -560,15 +573,24 @@ body {
 .loading {
   position: fixed; inset: 0;
   background: rgba(243, 241, 237, .72);
-  display: grid; place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 100;
   backdrop-filter: blur(4px);
 }
-/* O atributo hidden sozinho perde para display:grid em vários navegadores/WebViews. */
+/* O atributo hidden sozinho perde para display:flex em vários navegadores/WebViews. */
 .loading[hidden] {
   display: none !important;
   pointer-events: none;
   visibility: hidden;
+}
+.loading__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
 }
 .loading__spinner {
   width: 28px; height: 28px;
@@ -576,7 +598,7 @@ body {
   border: 2.5px solid var(--border-strong);
   border-top-color: var(--primary);
   animation: spin .7s linear infinite;
-  margin-bottom: 12px;
+  flex-shrink: 0;
 }
 .loading p { color: var(--text); font-weight: 600; margin: 0; font-size: 14px; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -609,17 +631,17 @@ body {
 
 /* ===== Breakpoints ======================================= */
 @media (min-width: 640px) {
-  .main { max-width: 680px; margin: 0 auto; padding: 24px 20px; }
-  .app-header { padding-left: 24px; padding-right: 24px; }
+  :root { --page-pad-x: 20px; }
+  .main { padding-top: 24px; padding-bottom: 24px; }
   .student { padding: 16px 20px; }
   .student--collapsed { padding: 12px 20px; }
   .student__name { font-size: 15.5px; }
   .modal[open] { align-items: center; }
   .modal__inner { border-radius: 18px; max-height: 86dvh; }
-}
-@media (min-width: 900px) {
   .action-bar {
-    max-width: 680px; left: 50%; transform: translateX(-50%);
+    max-width: var(--content-max);
+    left: 50%;
+    transform: translateX(-50%);
     border-radius: 16px 16px 0 0;
     border: 1px solid var(--border);
     border-bottom: none;
